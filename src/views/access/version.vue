@@ -17,14 +17,15 @@
         </div>
         
         <div class="condition-box">
-          <el-button type="primary" icon="el-icon-search">搜索</el-button>
+          <el-button type="primary" icon="el-icon-search" @click="initEditionList">搜索</el-button>
           <el-button class="reset" type="primary" icon="el-icon-refresh">重置</el-button>
         </div>
       </div>
       <div class="mj-info">
         <div class="mj-table">
           <div class="mj-btn-groups">
-            <el-button type="primary" size="small" @click="openAdd()">新增</el-button>
+            <el-button type="primary" size="small" @click="openAdd('add')">新增</el-button>
+            <el-button type="primary" size="small" @click="openAdd('update')">修改</el-button>
             <el-button type="primary" size="small" @click="openDelete">删除</el-button>
             <el-button type="primary" size="small" @click="exportData">导出</el-button>
           </div>
@@ -32,7 +33,7 @@
             <el-table
               ref="multipleTable"
               height="300"
-              :data="tableData"
+              :data="bb_list"
               stripe 
               fit
               tooltip-effect="dark"
@@ -47,7 +48,7 @@
               <el-table-column
                 label="序号"
                 width="60"
-                prop="gateModel">
+                type="index">
               </el-table-column>
               <el-table-column
                 label="版本名称"
@@ -55,16 +56,15 @@
               </el-table-column>
               <el-table-column
                 label="版本号"
-                width="60"
                 prop="editionRev">
               </el-table-column>
               <el-table-column
                 label="型号"
-                prop="xh2">
+                prop="gateModel.label">
               </el-table-column>
               <el-table-column
                 label="下载地址"
-                prop="xzdz">
+                prop="fileUrl">
               </el-table-column>
               <el-table-column
                 width="100"
@@ -80,11 +80,11 @@
                 </template>
               </el-table-column>
               <el-table-column
-                prop="bbms"
+                prop="remark"
                 label="版本描述">
               </el-table-column>
               <el-table-column
-                prop="cjsj"
+                prop="createTime"
                 label="创建时间">
               </el-table-column>
               <el-table-column
@@ -101,9 +101,9 @@
           class="pagination"
           @size-change="handleSizeChange"
           @current-change="handleCurrentChange"
-          :current-page="currentPage"
+          :current-page="pageNo"
           :page-sizes="[5, 10, 20, 50, 100]"
-          :page-size="100"
+          :page-size="pageSize"
           layout="total, sizes, prev, pager, next"
           :total="totalPage">
         </el-pagination>
@@ -127,12 +127,12 @@
                   v-for="item in addData.gateModel.options"
                   :key="item.value"
                   :label="item.label"
-                  :value="item.value">
+                  :value="item.value"  @click.native="addData.gateModel.label = item.label">
                 </el-option>
               </el-select>
             </el-form-item>
             <el-form-item required label="文件大小：" style="width:48%">
-              <el-input v-model="addData.fileSize"  placeholder="请输入文件大小"></el-input>
+              <el-input v-model="addData.gatesFileCreateReqVO.fileSize"  placeholder="请输入文件大小"></el-input>
             </el-form-item>
             <el-form-item required label="MD5：" style="width:48%">
               <el-input v-model="addData.fileMd5" ></el-input>
@@ -177,7 +177,7 @@
               <el-input v-model="detailData.editionRev" disabled></el-input>
             </el-form-item>
             <el-form-item required label="型号："  style="width:48%">
-              <el-input v-model="detailData.gateModel" disabled></el-input>
+              <el-input v-model="detailData.gateModelName" disabled></el-input>
             </el-form-item>
             <el-form-item required label="文件大小：" style="width:48%">
               <el-input v-model="detailData.size" disabled></el-input>
@@ -189,7 +189,7 @@
               <el-input v-model="detailData.link" disabled></el-input>
             </el-form-item>
             <el-form-item  label="版本说明：">
-              <el-input type="textarea" :autosize="{minRows:4}" v-model="detailData.bbsm" disabled></el-input>
+              <el-input type="textarea" :autosize="{minRows:4}" v-model="detailData.remark" disabled></el-input>
             </el-form-item>
           </el-form>
       </el-dialog>
@@ -201,7 +201,7 @@
         class="hideHeader"
         >
         <div style="text-align:center;">
-          <h2>是否删除该门禁?</h2>
+          <h2>是否删除该门禁版本?</h2>
           <el-button @click="delData.show = false">取 消</el-button>
           <el-button type="primary" @click="delEdition"> 确 定</el-button>
         </div>
@@ -238,56 +238,30 @@ export default {
       condition:{
         gateModel:{
           options:[{
-          value: '选项1',
-          label: '黄金糕'
+          value: 1,
+          label: '型号1'
         }],
-          value:''
+          value:1
         }
       },
-      tableData: [{
-          id:1,
-          gateModel: '111',
-          editionName: '111',
-          editionRev: '111',
-          xh2:'1111',
-          mjzt:'在线',
-          xzdz:5,
-          status:0,
-          bbms:'',
-          cjsj:''
-        },{
-          id:2,
-          gateModel: '111',
-          editionName: '111',
-          editionRev: '111',
-          xh2:'1111',
-          mjzt:'在线',
-          xzdz:5,
-          status:0,
-          bbms:'',
-          cjsj:''
-        },{
-          id:3,
-          gateModel: '111',
-          editionName: '111',
-          editionRev: '111',
-          xh2:'1111',
-          mjzt:'在线',
-          xzdz:5,
-          status:0,
-          bbms:'',
-          cjsj:''
-        }],
+      bb_list: [],
       multipleSelection: [],
-      currentPage: 4,
-      totalPage:1000,
+      pageNo: 1,
+      pageSize: 10,
+      totalPage:1,
       addData:{
+        id:0,
         show:false,
+        type:'add',
         editionName:'',
         editionRev:'',
         gateModel:{
-          value:'',
+          value:0,
+          label:'请选择',
           options:[{
+            value: 0,
+            label: '请选择'
+          },{
             value: 1,
             label: '型号1'
           }],
@@ -302,7 +276,6 @@ export default {
         },
         size:'',
         fileMd5:'',
-        bbsm:''
       },
       detailData:{
         show:false,
@@ -312,7 +285,7 @@ export default {
         link:'http://baidu.com',
         size:'54kb',
         fileMd5:'1111',
-        bbsm:'1111'
+        remark:'1111'
       },
       delData:{
         show:false,
@@ -337,22 +310,12 @@ export default {
     }
   },
   created() {
-    // delEdtion({
-    //   id:2
+    // getEdtionDetail({
+    //   id:1
     // }).then(data =>{
     //   console.log(data)
     // })
-    getEdtionDetail({
-      id:1
-    }).then(data =>{
-      console.log(data)
-    })
-    getEdtionList({
-      pageNo:1,
-      pageSize:10
-    }).then(data =>{
-      console.log(data)
-    })
+    this.initEditionList()
    
   },
   methods: {
@@ -369,57 +332,146 @@ export default {
       }
     },
     handleSizeChange(val) {
-      console.log(`每页 ${val} 条`);
+      this.pageSize = val;
+      this.initEditionList();
     },
     handleCurrentChange(val) {
-      console.log(`当前页: ${val}`);
+      this.pageNo = val;
+      this.initEditionList()
     },
-    openAdd(){
-      this.addData.show = true
+    initEditionList(){
+      getEdtionList({
+        pageNo:this.pageNo,
+        pageSize:this.pageSize
+      }).then(data =>{
+        console.log(data)
+        
+        if(data.data.data){
+          this.bb_list = data.data.data.list;
+          this.totalPage = data.data.data.total;
+        }
+      })
     },
+    openAdd(type){
+      this.addData.type = type;
+      if(type == 'add'){
+        this.addData.title = '新增';
+        this.addData.id = 0;
+        this.addData.editionName = '';
+        this.addData.editionRev = '';
+        this.addData.gateModel.value = 0;
+        this.addData.fileMd5 = '';
+        this.addData.gatesFileCreateReqVO = {
+          remark:'',
+          fileType:'.apk',
+          fileOriginalName:'1111',
+          filePath:'',
+          fileSize:'',
+          fileList:[]
+        }
+      }else{
+        if(this.currRowId == 0){
+          this.$message('请先选择要修改的版本')
+          return
+        }
+        this.addData.title = '修改';
+        var row = this.currRow;
+        this.addData.id = this.currRowId;
+        this.addData.editionName = row.editionName;
+        this.addData.editionRev = row.editionRev;
+        this.addData.gateModel.value = row.gateModel;
+        this.addData.fileMd5 = row.fileMd5;
+        this.addData.gatesFileCreateReqVO.remark = row.remark
+        this.addData.gatesFileCreateReqVO.fileSize = row.fileSize
+      }
+      this.addData.show = true;
+    },
+    
     openDelete(){
+      
+      if(this.currRowId == 0){
+          this.$message('请先选择要删除的版本')
+          return
+      }
       this.delData.show = true;
     },
     delEdition(){
-      this.delData.show = false;
+      delEdtion({
+        id:this.currRowId
+      }).then(data =>{
+        if(data.data.data){
+          this.$message('删除成功');
+          this.initEditionList()
+          this.delData.show = false;
+        }else{
+          this.$message(data.data.msg)
+        }
+      })
     },
     addEdition(){
       var data = this.addData;
 
-      if(data.editionName === ''){
-        this.$message('版本名称不能为空')
-        return 
+      // if(data.editionName === ''){
+      //   this.$message('版本名称不能为空')
+      //   return 
+      // }
+      // if(data.editionRev === ''){
+      //   this.$message('版本号不能为空')
+      //   return 
+      // }
+      // if(data.gateModel.value === ''){
+      //   this.$message('请选择型号')
+      //   return 
+      // }
+      // if(data.fileSize === ''){
+      //   this.$message('文件大小不能为空')
+      //   return 
+      // }
+      // if(data.fileMd5 === ''){
+      //   this.$message('Md5不能为空')
+      //   return 
+      // }
+      // if(data.gatesFileCreateReqVO.fileList.length === 0){
+      //   this.$message('请选择文件上传')
+      //   return 
+      // }
+      var postData = {
+          "id":data.id,
+          "editionName":data.editionName,
+          "editionRev":data.editionRev,
+          "gateModel":data.gateModel.value,
+          "gateModelName":data.gateModel.label,
+          "fileSize": data.gatesFileCreateReqVO.fileSize,
+          "fileMd5": data.fileMd5,
+          "remark": data.gatesFileCreateReqVO.remark,
+          "fileName": "",//data.gatesFileCreateReqVO.fileList[0].url
       }
-      if(data.editionRev === ''){
-        this.$message('版本号不能为空')
-        return 
+      alert(data.type)
+      if(data.type == 'add'){
+        createEdtion({
+          ...postData
+        }).then(data =>{
+          if(data.data.data){
+            this.$message('添加成功');
+            this.initEditionList()
+            this.addData.show = false;
+          }else{
+            this.$message(data.data.msg)
+          }
+        })
+      }else{
+        updateEdtion({
+          ...postData
+        }).then(data =>{
+          if(data.data.data){
+            this.$message('修改成功');
+            this.initEditionList()
+            this.addData.show = false;
+          }else{
+            this.$message(data.data.msg)
+          }
+        })
       }
-      if(data.gateModel.value === ''){
-        this.$message('请选择型号')
-        return 
-      }
-      if(data.fileSize === ''){
-        this.$message('文件大小不能为空')
-        return 
-      }
-      if(data.fileMd5 === ''){
-        this.$message('Md5不能为空')
-        return 
-      }
-      if(data.gatesFileCreateReqVO.fileList.length === 0){
-        this.$message('请选择文件上传')
-        return 
-      }
-      createEdtion({
-        "editionName":data.editionName,
-        "editionRev":data.editionRev,
-        "gateModel":data.gateModel.value,
-        "fileSize": data.fileSize,
-        "fileMd5": data.fileMd5,
-        "fileName":data.gatesFileCreateReqVO.fileList[0].url
-      }).then(data =>{
-        console.log(data)
-      })
     },
     exportData(){
       alert('导出数据')

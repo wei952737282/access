@@ -94,7 +94,7 @@
           </div>
         </div>
         <div class="condition-box">
-          <el-button type="primary" icon="el-icon-search">搜索</el-button>
+          <el-button type="primary" icon="el-icon-search" @click="initMjList">搜索</el-button>
           <el-button class="reset" type="primary" icon="el-icon-refresh">重置</el-button>
         </div>
       </div>
@@ -132,16 +132,14 @@
               <el-table-column
                 label="序号"
                 width="60"
-                prop="id">
+                type="index">
               </el-table-column>
               <el-table-column
                 label="楼栋"
-                width="60"
                 prop="buildingsName">
               </el-table-column>
               <el-table-column
                 label="楼层"
-                width="60"
                 prop="buildingsStoreyName">
               </el-table-column>
               <el-table-column
@@ -173,7 +171,7 @@
                     inactive-color="#ff4949"
                     :active-value="1"
                     :inactive-value="0"
-                    @change="mjStatusChange(scope.row)"
+                    @change="mjStatusChange(scope.row,'mask')"
                     @click.native="stopUp"
                     >
                   </el-switch>
@@ -189,7 +187,7 @@
                     inactive-color="#ff4949"
                     :active-value="1"
                     :inactive-value="0"
-                    @change="mjStatusChange(scope.row)"
+                    @change="mjStatusChange(scope.row,'twCheck')"
                     @click.native="stopUp">
                   </el-switch>
                 </template>
@@ -204,7 +202,7 @@
                     inactive-color="#ff4949"
                     :active-value="1"
                     :inactive-value="0"
-                    @change="mjStatusChange(scope.row)"
+                    @change="mjStatusChange(scope.row,'dwCheck')"
                     @click.native="stopUp">
                   </el-switch>
                 </template>
@@ -245,9 +243,9 @@
           class="pagination"
           @size-change="handleSizeChange"
           @current-change="handleCurrentChange"
-          :current-page="currentPage"
+          :current-page="pageNo"
           :page-sizes="[5, 10, 20, 50, 100]"
-          :page-size="100"
+          :page-size="pageSize"
           layout="total, sizes, prev, pager, next"
           :total="totalPage">
         </el-pagination>
@@ -563,47 +561,7 @@ export default {
         title:'离线超过24小时',
         value:0
       }],
-      mj_list: [{
-        "id":1,
-        "gateGuid":1,
-        "gateModel":1,
-        "gateType": 1,
-        "direction":1,
-        "buildingsId":1,
-        "buildingsName":"楼栋1号",
-        "buildingsStoreyId":1,
-        "buildingsStoreyName":"楼层1号",
-        "cfgVpnAccount":'11111',
-        "cfgVpnIp":'111.111.111',
-        "cfgVpnPwd":'123456',
-        "gateGps":'12345.789,98765.321',
-        "mask":0,
-        "status":0,
-        "twCheck":0,
-        "dwCheck":0,
-        "gateOnline":0,
-        "gateName":"显示名称1",
-      },{
-        "id":2,
-        "gateGuid":2,
-        "gateModel":1,
-        "gateType": 1,
-        "direction":1,
-        "buildingsId":1,
-        "buildingsName":"楼栋1号",
-        "buildingsStoreyId":1,
-        "buildingsStoreyName":"楼层1号",
-        "cfgVpnAccount":'11111',
-        "cfgVpnIp":'111.111.111',
-        "cfgVpnPwd":'123456',
-        "gateGps":'12345.789,98765.321',
-        "mask":0,
-        "status":0,
-        "twCheck":0,
-        "dwCheck":0,
-        "gateOnline":0,
-        "gateName":"显示名称2",
-      }],
+      mj_list: [],
       multipleSelection: [],
       dialogVisible:false,
       diaType:1,
@@ -641,8 +599,9 @@ export default {
         }
       },
       ycType:'',
-      currentPage: 4,
-      totalPage:1000,
+      pageNo: 1,
+      pageSize:10,
+      totalPage:1,
       addOrUpdate:{
         title:'新增',
         show:false,
@@ -659,17 +618,23 @@ export default {
         direction:1,
         gateAdminPwd:'',
         ld:{
-          value:1,
+          value:0,
           label:'',
           options:[{
+            buildingsId: 0,
+            buildingsName: '请选择'
+          },{
             buildingsId: 1,
             buildingsName: '楼栋1号'
           }],
         },
         lc:{
-          value:1,
-          label:'',
+          value:0,
+          label:'请选择',
           options:[{
+            buildingsStoreyId: 0,
+            buildingsStoreyName: '请选择'
+          },{
             buildingsStoreyId: 1,
             buildingsStoreyName	: '1层'
           }],
@@ -715,10 +680,14 @@ export default {
     },
     initMjList(){
       getMjList({
-        pageNo:1,
-        pageSize:10
+        pageNo:this.pageNo,
+        pageSize:this.pageSize
       }).then(data =>{
         console.log(data)
+        if(data.data.data){
+          this.mj_list = data.data.data.list;
+          this.totalPage = data.data.data.total;
+        }
       })
     },
     dateChange(){
@@ -737,10 +706,12 @@ export default {
       this.ycType = ''
     },
     handleSizeChange(val) {
-      console.log(`每页 ${val} 条`);
+      this.pageSize = val;
+      this.initMjList();
     },
     handleCurrentChange(val) {
-      console.log(`当前页: ${val}`);
+      this.pageNo = val;
+      this.initMjList()
     },
     aOrU(){
       if(this.addOrUpdate.gateGuid===""){
@@ -755,13 +726,13 @@ export default {
       if(this.addOrUpdate.type == 'add'){
         createMj({
           "gateGuid":data.gateGuid,
-          "gateModel":data.gateModel,
+          "gateModel":data.gateModel.val,
           "gateType": data.gateType,
           "direction":data.direction,
-          "buildingsId":data.ld.buildingsId,
-          "buildingsName":data.ld.buildingsName,
-          "buildingsStoreyId":data.lc.buildingsStoreyId,
-          "buildingsStoreyName":data.lc.buildingsStoreyName,
+          "buildingsId":data.ld.value,
+          "buildingsName":data.ld.label,
+          "buildingsStoreyId":data.lc.value,
+          "buildingsStoreyName":data.lc.label,
           "cfgVpnAccount":data.cfgVpnAccount,
           "cfgVpnIp":data.cfgVpnIp,
           "cfgVpnPwd":data.cfgVpnPwd,
@@ -770,25 +741,28 @@ export default {
           "status":0,
           "twCheck":0,
           "dwCheck":0,
-          "gateOnline":0,
           "gateName":"显示名称",
           "isPush":"N",
           "gateAppVer":0
         }).then(data =>{
-          console.log(data)
-          this.$message('添加成功')
+          if(data.data.data){
+            this.$message('添加成功');
+            this.initMjList()
+          }else{
+            this.$message(data.data.msg)
+          }
         })
       }else{
         updateMj({
           "id": this.currRowId,
           "gateGuid":data.gateGuid,
-          "gateModel":data.gateModel,
+          "gateModel":data.gateModel.value,
           "gateType": data.gateType,
           "direction":data.direction,
           "buildingsId":data.ld.buildingsId,
-          "buildingsName":data.ld.buildingsName,
+          "buildingsName":data.ld.label,
           "buildingsStoreyId":data.lc.buildingsStoreyId,
-          "buildingsStoreyName":data.lc.buildingsStoreyName,
+          "buildingsStoreyName":data.lc.label,
           "cfgVpnAccount":data.cfgVpnAccount,
           "cfgVpnIp":data.cfgVpnIp,
           "cfgVpnPwd":data.cfgVpnPwd,
@@ -797,13 +771,16 @@ export default {
           "status":0,
           "twCheck":1,
           "dwCheck":0,
-          "gateOnline":0,
           "gateName":"显示名称",
           "isPush":"N",
           "gateAppVer":0
         }).then(data =>{
-          console.log(data.data)
-          this.$message('修改成功')
+          if(data.data.data){
+            this.$message('修改成功');
+            this.initMjList()
+          }else{
+            this.$message(data.data.msg)
+          }
         })
         this.addOrUpdate.show = false
       }
@@ -858,7 +835,11 @@ export default {
         id:this.currRowId
       }).then(data =>{
         console.log(data);
-        this.initMjList();
+        if(data.data.data){
+          this.initMjList();
+        }else{
+          this.$message(data.data.msg)
+        }
       })
       this.delData.show = false;
     },
@@ -871,9 +852,33 @@ export default {
     multiChange(){
 
     },
-    mjStatusChange(row){ // 各种检测状态改变
-      console.log(row)
-      console.log(row.mask)
+    mjStatusChange(row,type){ // 各种检测状态改变
+      updateMj({
+          "id": row.id,
+          "gateGuid":row.gateGuid,
+          "gateModel":row.value,
+          "gateType": row.gateType,
+          "direction":row.direction,
+          "buildingsId":row.buildingsId,
+          "buildingsName":row.label,
+          "buildingsStoreyId":row.buildingsStoreyId,
+          "buildingsStoreyName":row.label,
+          "cfgVpnAccount":row.cfgVpnAccount,
+          "cfgVpnIp":row.cfgVpnIp,
+          "cfgVpnPwd":row.cfgVpnPwd,
+          "gateGps":row.gateGps,
+          "mask":row.mask,
+          "status":row.status,
+          "twCheck":row.twCheck,
+          "dwCheck":row.dwCheck,
+          "gateName": row.gateName,
+          "isPush":row.isPush,
+          "gateAppVer":row.gateAppVer
+      }).then( data => {
+        console.log(data)
+        this.initMjList();
+        this.addOrUpdate.show = false;
+      })
     },
     stopUp(e){
       var e = e|| window.event;

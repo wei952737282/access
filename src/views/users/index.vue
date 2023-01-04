@@ -24,7 +24,7 @@
         
         <div class="condition-box">
           <div class="condition-title"></div>
-          <el-button type="primary" icon="el-icon-search">搜索</el-button>
+          <el-button type="primary" icon="el-icon-search" @click="initDept">搜索</el-button>
           <el-button class="reset" type="primary" icon="el-icon-refresh">重置</el-button>
         </div>
       </div>
@@ -100,6 +100,9 @@
               stripe 
               fit
               tooltip-effect="dark"
+              row-key="id"
+              default-expand-all
+              :tree-props="{children: 'children', hasChildren: 'hasChildren'}"
               style="width: 50%" v-show="view_type==0">
               <el-table-column
                 label="机构"
@@ -285,11 +288,14 @@ export default {
     this.initDept()
   },
   methods: {
+    
     handleSizeChange(val) {
-      console.log(`每页 ${val} 条`);
+      this.pageSize = val;
+      this.initDept();
     },
     handleCurrentChange(val) {
-      console.log(`当前页: ${val}`);
+      this.pageNo = val;
+      this.initDept()
     },
     openAdd(type,row){
       this.addData.type = type
@@ -422,6 +428,9 @@ export default {
           this.bm_list = data.data.data
         })
       }
+    },
+    getTreeData(arr){
+      
     }
   }
 }

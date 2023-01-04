@@ -38,7 +38,7 @@
         
         <div class="condition-box">
           <div class="condition-title"></div>
-          <el-button type="primary" icon="el-icon-search">搜索</el-button>
+          <el-button type="primary" icon="el-icon-search" @click="init_iplist">搜索</el-button>
           <el-button class="reset" type="primary" icon="el-icon-refresh">重置</el-button>
         </div>
       </div>
@@ -54,68 +54,70 @@
             <el-table
               ref="multipleTable"
               height="300"
-              :data="tableData"
+              :data="ip_list"
               stripe 
               fit
               tooltip-effect="dark"
               style="width: 100%"
-              @selection-change="handleSelectionChange">
+              @row-click="handleSelectionChange">
               <el-table-column
-                type="selection"
                 width="55">
+                <template slot-scope="scope">
+                  <el-checkbox :value="scope.row.id == currRowId" disabled></el-checkbox>
+                </template>
               </el-table-column>
               <el-table-column
                 label="序号"
                 width="60"
-                prop="xh">
+                type="index">
               </el-table-column>
               <el-table-column
                 label="楼栋"
-                prop="ld">
+                prop="buildingsName">
               </el-table-column>
               <el-table-column
                 label="楼层"
                 width="60"
-                prop="lc">
+                prop="buildingsStoreyName">
               </el-table-column>
               <el-table-column
                 label="配置名称"
-                prop="pzmc">
+                prop="cfgName">
               </el-table-column>
               <el-table-column
                 label="网关"
-                prop="wg">
+                prop="cfgGateway">
               </el-table-column>
               <el-table-column
-                prop="zwym"
+                prop="cfgNetmask"
                 label="子网掩码">
               </el-table-column>
               <el-table-column
-                prop="dns"
+                prop="cfgDns"
                 label="DNS">
               </el-table-column>
               <el-table-column
-                prop="mjip"
+                prop="cfgGateIp"
                 label="门禁ip">
               </el-table-column>
               <el-table-column
-                prop="mwip"
+                prop="cfgIpc1Ip"
                 label="门外摄像头ip">
               </el-table-column>
               <el-table-column
-                prop="mnip"
+                prop="cfgIpc2Ip"
                 label="门内摄像头ip">
               </el-table-column>
             </el-table>
           </div>
-        </div>pzmc
+        </div>
         <el-pagination
           class="pagination"
           @size-change="handleSizeChange"
           @current-change="handleCurrentChange"
-          :current-page="currentPage"
+          :current-page="pageNo"
           :page-sizes="[5, 10, 20, 50, 100]"
-          :page-size="100"
+          :page-size="pageSize"
           layout="total, sizes, prev, pager, next"
           :total="totalPage">
         </el-pagination>
@@ -134,25 +136,25 @@
               </el-radio-group>
             </el-form-item>
             <el-form-item required label="配置名称："  style="width:48%">
-              <el-input v-model="addData.pzmc" placeholder="请输入配置名称"></el-input>
+              <el-input v-model="addData.cfgName" placeholder="请输入配置名称"></el-input>
             </el-form-item>
             <el-form-item required label="子网掩码："  style="width:48%">
-              <el-input v-model="addData.zwym"  placeholder="请输入子网掩码"></el-input>
+              <el-input v-model="addData.cfgNetmask"  placeholder="请输入子网掩码"></el-input>
             </el-form-item>
             <el-form-item required label="网关："  style="width:48%">
-              <el-input v-model="addData.wg"  placeholder="请输入网关"></el-input>
+              <el-input v-model="addData.cfgGateway"  placeholder="请输入网关"></el-input>
             </el-form-item>
             <el-form-item required label="门禁ip：" style="width:48%">
-              <el-input v-model="addData.mjip" placeholder="请输入门禁ip"></el-input>
+              <el-input v-model="addData.cfgGateIp" placeholder="请输入门禁ip"></el-input>
             </el-form-item>
             <el-form-item required label="DNS：" style="width:48%">
-              <el-input v-model="addData.dns" placeholder="请输入DNS"></el-input>
+              <el-input v-model="addData.cfgDns" placeholder="请输入DNS"></el-input>
             </el-form-item>
             <el-form-item label="门外摄像头ip：" style="width:48%;">
-              <el-input v-model="addData.mwip" placeholder="请输入门外摄像头ip"></el-input>
+              <el-input v-model="addData.cfgIpc1Ip" placeholder="请输入门外摄像头ip"></el-input>
             </el-form-item>
             <el-form-item label="门内摄像头ip：" style="width:48%;">
-              <el-input v-model="addData.mnip" placeholder="请输入门内摄像头ip"></el-input>
+              <el-input v-model="addData.cfgIpc2Ip" placeholder="请输入门内摄像头ip"></el-input>
             </el-form-item>
             <el-form-item  label="门禁：">
 
@@ -160,7 +162,7 @@
           </el-form>
         <span slot="footer" class="dialog-footer" >
           <el-button @click="addData.show = false">取 消</el-button>
-          <el-button type="primary" > 确 定</el-button>
+          <el-button type="primary" @click="aOrU"> 确 定</el-button>
         </span>
       </el-dialog>
       <el-dialog
@@ -171,7 +173,7 @@
         class="hideHeader"
         >
         <div style="text-align:center;">
-          <h2>是否删除该门禁?</h2>
+          <h2>是否删除该ip?</h2>
           <el-button @click="delData.show = false">取 消</el-button>
           <el-button type="primary" @click="deleteMj"> 确 定</el-button>
         </div>
@@ -183,6 +185,8 @@ import {createIp,updateIp,delIp,getIpList} from "@/api/access";
 export default {
   data() {
     return {
+      currRowId:0,
+      currRow:{},
       condition:{
         ld:{
           options:[{
@@ -198,59 +202,36 @@ export default {
         }],
           value:''
         },
-        wg:''
+        cfgGateway:''
       },
-      tableData: [{
-          id:1,
-          xh: '111',
-          ld: '111',
-          lc: '111',
-          pzmc:'1111',
-          wg:'894561313',
-          zwym:'111.111.111.111',
-          dns:'111.111.111.111',
-          mjip:'111.111.111.111',
-          mwip:'111.111.111.111',
-          mnip:'111.111.111.111',
-        },{
-          id:2,
-          xh: '111',
-          ld: '111',
-          lc: '111',
-          pzmc:'1111',
-          wg:'894561313',
-          zwym:'111.111.111.111',
-          dns:'111.111.111.111',
-          mjip:'111.111.111.111',
-          mwip:'111.111.111.111',
-          mnip:'111.111.111.111',
-        },{
-          id:3,
-          xh: '111',
-          ld: '111',
-          lc: '111',
-          pzmc:'1111',
-          wg:'894561313',
-          zwym:'111.111.111.111',
-          dns:'111.111.111.111',
-          mjip:'111.111.111.111',
-          mwip:'111.111.111.111',
-          mnip:'111.111.111.111',
-      }],
-      multipleSelection: [],
-      currentPage: 4,
-      totalPage:1000,
+      ip_list: [],
+      pageNo: 1,
+      pageSize:10,
+      totalPage:1,
       addData:{
-        show:false,
-        title:'新增',
-        pzmc:'',
-        zwym:'',
-        wg:'',
-        dns:'',
-        mjip:'',
-        mwip:'',
-        mnip:'',
-        mjList:[]
+        "show":false,
+        "type":'add',
+        "title":'新增',
+        "buildingsId":"8",
+        "buildingsName":"楼栋8号",
+        "cfgDns":"",//	dns		false	string
+        "cfgVpnAccount":"",//	VPN账号		false	
+        "cfgVpnIp":"",//	VPN服务器地址		false	
+        "cfgVpnPwd":"",//	VPN密码
+        "cfgNetmask":"",
+        "cfgGateway":"",
+        "cfgGateIp":"",
+        "cfgName":"",
+        "cfgIpc1Ip":"",
+        "cfgIpc2Ip":"",	//楼内摄像头IP			
+        "zonesNetworkStoreyUpdateReqVOList":[
+          {
+            "buildingsId":"8",
+            "buildingsName":"楼栋8号",
+            "buildingsStoreyId":"1",
+            "buildingsStoreyName":"1层"
+          }
+        ]
       },
       delData:{
         show:false,
@@ -259,84 +240,157 @@ export default {
     }
   },
   created() {
-    // createIp({
-    //     "buildingsId":"8",
-    //     "buildingsName":"楼栋8号",
-    //     "cfgNetmask":"111.111",
-    //     "cfgGateway":"111.11.11.111",
-    //     "cfgGateIp":"111.11.11.111",
-    //     "cfgName":"配置1",
-    //     "cfgNetmask":"111.111.111",
-    //     "zonesNetworkStoreyCreateReqVOList":[
-    //       {
-    //         "buildingsId":"8",
-    //         "buildingsName":"楼栋8号",
-    //         "buildingsStoreyId":"1",
-    //         "buildingsStoreyName":"1层",
-    //       }
-    //     ]
-    // }).then(data =>{
-    //   console.log(data)
-    // })
-    // updateIp({
-    //     "id":6,
-    //     "buildingsId":"8",
-    //     "buildingsName":"楼栋8号",
-    //     "cfgNetmask":"111.111",
-    //     "cfgGateway":"111.11.11.111",
-    //     "cfgGateIp":"111.11.11.111",
-    //     "cfgName":"配置1-改",
-    //     "cfgNetmask":"111.111.111",
-    //     "zonesNetworkStoreyUpdateReqVOList":[
-    //       {
-    //         "id":6,
-    //         "buildingsId":"8",
-    //         "buildingsName":"楼栋8号",
-    //         "buildingsStoreyId":"1",
-    //         "buildingsStoreyName":"1层"
-    //       }
-    //     ]
-    // }).then(data =>{
-    //   console.log(data)
-    // })
-    
-    
-    delIp({
-      id:1
-    }).then(data =>{
-      console.log(data)
-    })
-    getIpList({
-      pageNo:1,
-      pageSize:10
-    }).then(data =>{
-      console.log(data)
-    })
+    this.init_iplist()
   },
   methods: {
     dateChange(){
       console.log(this.condition.zxlxsj)
     },
     handleSelectionChange(val){
-      this.multipleSelection = val;
+      if(this.currRowId == val.id){
+        this.currRowId = 0;
+        this.currRow = '';
+      }else{
+        this.currRowId = val.id;
+        this.currRow = val;
+      }
+    },
+    init_iplist(){
+      getIpList({
+        pageNo:this.pageNo,
+        pageSize:this.pageSize
+      }).then(data =>{
+        console.log(data)
+        if(data.data.data){
+          this.ip_list = data.data.data.list;
+          this.totalPage = data.data.data.total;
+        }else{
+          this.$message(data.data.msg)
+        }
+      })
     },
     openDatail(id){
       this.detailData.show = true;
     },
     handleSizeChange(val) {
-      console.log(`每页 ${val} 条`);
+      this.pageSize = val;
+      this.init_iplist();
     },
     handleCurrentChange(val) {
-      console.log(`当前页: ${val}`);
+      this.pageNo = val;
+      this.init_iplist()
     },
-    openAdd(){
+    openAdd(type){
+      this.addData.type = type;
+      
+      if(type == 'add'){
+        this.addData.title = '新增';
+        this.addData.cfgDns = '';
+        this.addData.cfgVpnAccount = '';
+        this.addData.cfgVpnIp = '';
+        this.addData.cfgVpnPwd = '';
+        this.addData.cfgNetmask = '';
+        this.addData.cfgGateway = '';
+        this.addData.cfgGateIp = '';
+        this.addData.cfgName = '';
+        this.addData.cfgIpc1Ip = '';
+        this.addData.cfgIpc2Ip = '';	
+      }else{
+        if(this.currRowId == 0){
+          this.$message('请先选择要修改的ip')
+          return
+        }
+        this.addData.title = '修改';
+        
+        var row = this.currRow;
+        this.addData.cfgDns = row.cfgDns;
+        this.addData.cfgVpnAccount = row.cfgVpnAccount;
+        this.addData.cfgVpnIp = row.cfgVpnIp;
+        this.addData.cfgVpnPwd = row.cfgVpnPwd;
+        this.addData.cfgNetmask = row.cfgNetmask;
+        this.addData.cfgGateway = row.cfgGateway;
+        this.addData.cfgGateIp = row.cfgGateIp;
+        this.addData.cfgName = row.cfgName;
+        this.addData.cfgIpc1Ip = row.cfgIpc1Ip;
+        this.addData.cfgIpc2Ip = row.cfgIpc2Ip;	
+      }
       this.addData.show = true
     },
+    aOrU(){
+      var data = this.addData;
+      var postData = {
+        "cfgDns":data.cfgDns,
+        "cfgVpnAccount":data.cfgVpnAccount,
+        "cfgVpnIp":data.cfgVpnIp,
+        "cfgVpnPwd":data.cfgVpnPwd,
+        "cfgNetmask":data.cfgNetmask,
+        "cfgGateway":data.cfgGateway,
+        "cfgGateIp":data.cfgGateIp,
+        "cfgName":data.cfgName,
+        "cfgIpc1Ip":data.cfgIpc1Ip,
+        "cfgIpc2Ip":data.cfgIpc2Ip,	//楼内摄像头IP		
+      }
+      if(data.type == 'add'){
+        createIp({
+          "buildingsId":"8",
+          "buildingsName":"楼栋8号",
+          "zonesNetworkStoreyCreateReqVOList":[
+            {
+              "buildingsId":"8",
+              "buildingsName":"楼栋8号",
+              "buildingsStoreyId":"1",
+              "buildingsStoreyName":"1层",
+            }
+          ],
+          ...postData
+        }).then(data =>{
+          console.log(data)
+          if(data.data.data){
+            this.$message('添加成功');
+            this.init_iplist()
+            this.addData.show = false;
+          }else{
+            this.$message(data.data.msg)
+          }
+        })
+      }else{
+        updateIp({
+          "id":this.currRowId,
+          "zonesNetworkStoreyCreateReqVOList":{
+            id:this.currRowId
+          },
+          ...postData
+        }).then(data =>{
+          console.log(data)
+          if(data.data.data){
+            this.$message('修改成功');
+            this.init_iplist()
+            this.addData.show = false;
+          }else{
+            this.$message(data.data.msg)
+          }
+        })
+      }
+    },
     openDelete(){
+      if(this.currRowId == 0){
+          this.$message('请先选择要删除的ip')
+          return
+      }
       this.delData.show = true;
     },
     deleteMj(){
-      this.delData.show = false;
+      delIp({
+        id:this.currRowId
+      }).then(data =>{
+        if(data.data.data){
+          this.$message('删除成功');
+          this.init_iplist()
+          this.delData.show = false;
+        }else{
+          this.$message(data.data.msg)
+        }
+      })
     },
     exportData(){
       alert('导出数据')
